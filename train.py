@@ -36,6 +36,7 @@ from utils.callbacks import SaveVecNormalizeCallback
 from utils.noise import LinearNormalActionNoise
 from utils.utils import StoreDict
 
+import deep_quintic
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -251,13 +252,23 @@ if __name__ == '__main__':
             if env_wrapper is not None:
                 env = env_wrapper(env)
         else:
-            if n_envs == 1:
-                env = DummyVecEnv([make_env(env_id, 0, args.seed, wrapper_class=env_wrapper, log_dir=log_dir, env_kwargs=env_kwargs)])
+            # hacky way to get multiple gui outputs in test environments
+            if "Test" in env_id:
+                if n_envs == 1:
+                    env = SubprocVecEnv([make_env(env_id, 0, args.seed, wrapper_class=env_wrapper, log_dir=log_dir, env_kwargs=env_kwargs)])
+                else:
+                    # env = SubprocVecEnv([make_env(env_id, i, args.seed) for i in range(n_envs)])
+                    # On most env, SubprocVecEnv does not help and is quite memory hungry
+                    env = SubprocVecEnv([make_env(env_id, i, args.seed, log_dir=log_dir,
+                                                wrapper_class=env_wrapper, env_kwargs=env_kwargs) for i in range(n_envs)])
             else:
-                # env = SubprocVecEnv([make_env(env_id, i, args.seed) for i in range(n_envs)])
-                # On most env, SubprocVecEnv does not help and is quite memory hungry
-                env = DummyVecEnv([make_env(env_id, i, args.seed, log_dir=log_dir,
-                                            wrapper_class=env_wrapper, env_kwargs=env_kwargs) for i in range(n_envs)])
+                if n_envs == 1:
+                    env = DummyVecEnv([make_env(env_id, 0, args.seed, wrapper_class=env_wrapper, log_dir=log_dir, env_kwargs=env_kwargs)])
+                else:
+                    # env = SubprocVecEnv([make_env(env_id, i, args.seed) for i in range(n_envs)])
+                    # On most env, SubprocVecEnv does not help and is quite memory hungry
+                    env = DummyVecEnv([make_env(env_id, i, args.seed, log_dir=log_dir,
+                                                wrapper_class=env_wrapper, env_kwargs=env_kwargs) for i in range(n_envs)])
             if normalize:
                 if args.verbose > 0:
                     if len(normalize_kwargs) > 0:
